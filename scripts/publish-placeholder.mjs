@@ -93,7 +93,7 @@ console.log(`
 Done. Next, on npmjs.com open ${name} → Settings:
   1. Trusted publishing → GitHub Actions: organization gydr-ai, the
      repository from package.json, workflow release.yml, environment npm,
-     allow "npm publish".
+     and leave both "Allowed actions" unticked (staged publishing only).
   2. Publishing access → "Require two-factor authentication and disallow tokens".
 After the first real release, deprecate the placeholder:
   npm deprecate ${name}@${PLACEHOLDER_VERSION} "Placeholder with no code; use ${name}@latest"

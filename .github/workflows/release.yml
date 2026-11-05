@@ -130,14 +130,18 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
 
-      # Trusted Publishing needs npm 11.5.1 or later. Node 24 bundles it, so
-      # nothing is downloaded into this privileged job; fail if that changes.
+      # Staged publishing needs npm 11.15.0 or later (trusted publishing
+      # 11.5.1). Node 24 bundles it, so nothing is downloaded into this
+      # privileged job; fail if that changes.
       - name: Check bundled npm
         run: |
           node -e '
             const [major, minor, patch] = process.argv[1].split(".").map(Number)
-            const ok = major > 11 || (major === 11 && (minor > 5 || (minor === 5 && patch >= 1)))
-            if (!ok) { console.error("npm " + process.argv[1] + " is too old for trusted publishing"); process.exit(1) }
+            const ok = major > 11 || (major === 11 && minor >= 15)
+            if (!ok) { console.error("npm " + process.argv[1] + " is too old for staged publishing"); process.exit(1) }
           ' "$(npm --version)"
 
-      - run: npm publish out/*.tgz --access public
+      # Staged publishing: the trusted publisher on npm allows only
+      # `npm stage publish`, so this run can only queue the version. It goes
+      # live when a maintainer approves it on npm with 2FA (RELEASING.md).
+      - run: npm stage publish out/*.tgz --access public --provenance

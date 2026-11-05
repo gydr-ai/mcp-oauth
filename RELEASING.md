@@ -14,10 +14,12 @@ release.
 4. The `build` job checks out the tag, runs the full check and packs the
    tarball, with no publish permission at all.
 5. The `publish` job waits for approval on the protected `npm`
-   environment, then publishes that tarball through **Trusted Publishing**
+   environment, then **stages** that tarball through **Trusted Publishing**
    (OIDC). It installs and runs no project code, so no dependency can reach
    the publish token. npm attaches a provenance statement linking the
    package to that exact workflow run.
+6. The staged version goes live only when a maintainer approves it on npm
+   with 2FA (see "Approving a release").
 
 Before 1.0.0, a breaking change bumps the minor version and a feature bumps
 the patch version (`bump-minor-pre-major`, `bump-patch-for-minor-pre-major`).
@@ -38,7 +40,8 @@ it from `../safe-fetch`, and CI cannot install. So:
 npm only lets you trust a workflow for a package that already exists, and a
 package only exists once a version is published. So the name is reserved
 once with an inert placeholder, and every real version, the first included,
-is published by CI with provenance. No npm token is created at any point.
+is staged by CI with provenance and approved by a maintainer. No npm token
+is created at any point.
 
 1. **Reserve the name** (from a clean checkout of `main`, logged in to npm
    with 2FA):
@@ -57,11 +60,13 @@ is published by CI with provenance. No npm token is created at any point.
    - Repository: `mcp-oauth`
    - Workflow filename: `release.yml`
    - Environment name: `npm`
-   - Allowed actions: tick `npm publish`
+   - Allowed actions: leave **both unticked**. The publisher may then only
+     _stage_ a version (`npm stage publish`); nothing goes live until a
+     maintainer approves it with 2FA.
 3. **Lock it down**: Settings → Publishing access → _Require two-factor
    authentication and disallow tokens_.
-4. **First real release**: merge the release pull request and approve the
-   `npm` deployment. Then deprecate the placeholder:
+4. **First real release**: follow "Approving a release" below, then deprecate
+   the placeholder:
 
    ```bash
    npm deprecate @gydr-ai/mcp-oauth@0.0.0-placeholder "Placeholder with no code; use @gydr-ai/mcp-oauth@latest"
@@ -76,6 +81,25 @@ is published by CI with provenance. No npm token is created at any point.
    variable `RELEASE_APP_ID` and secret `RELEASE_APP_PRIVATE_KEY`. Without
    it, the release pull request is opened with `GITHUB_TOKEN`, which GitHub
    does not let trigger other workflows.
+
+## Approving a release
+
+Every release needs two approvals, so a compromised GitHub account or
+workflow alone can never put a version on npm:
+
+1. **GitHub**: approve the `npm` environment deployment when the Release
+   workflow asks. CI then _stages_ the version with provenance.
+2. **npm**: approve the staged version with your 2FA (npm 11.15.0 or later):
+
+   ```bash
+   npm stage list @gydr-ai/mcp-oauth
+   npm stage view <stage-id>
+   npm stage approve <stage-id>
+   ```
+
+   Check that `npm stage view` shows the version, the provenance link to the
+   `release.yml` run, and the expected file list before approving. Reject a
+   stage you did not expect with `npm stage reject <stage-id>`.
 
 ## Verifying a release
 
