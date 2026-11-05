@@ -16,9 +16,10 @@ gh api -X PATCH "repos/$repo" --silent \
   -f squash_merge_commit_message=PR_BODY \
   -F web_commit_signoff_required=false \
   -f 'security_and_analysis[secret_scanning][status]=enabled' \
-  -f 'security_and_analysis[secret_scanning_push_protection][status]=enabled' \
-  -f 'security_and_analysis[secret_scanning_non_provider_patterns][status]=enabled' \
-  -f 'security_and_analysis[secret_scanning_validity_checks][status]=enabled'
+  -f 'security_and_analysis[secret_scanning_push_protection][status]=enabled'
+# Non-provider patterns and validity checks are paid GitHub Advanced Security
+# features, so they are deliberately not requested: everything here is free
+# for public repositories.
 
 echo "Private vulnerability reporting"
 gh api -X PUT "repos/$repo/private-vulnerability-reporting" --silent

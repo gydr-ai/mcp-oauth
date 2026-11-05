@@ -3,6 +3,12 @@
 # Shai-Hulud spread through freshly published versions that were found and
 # pulled within days.
 minimumReleaseAge: 10080
+# Our own packages skip the wait so a fix can ship the same day. They are
+# published only by our Release workflow over trusted publishing with
+# provenance, and trustPolicy below refuses any version that lacks it, so a
+# version published with a stolen credential is still blocked.
+minimumReleaseAgeExclude:
+  - "@gydr-ai/*"
 # Never run install scripts from dependencies.
 strictDepBuilds: true
 allowBuilds:
