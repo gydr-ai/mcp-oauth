@@ -1,3 +1,4 @@
+import { trimTrailing } from "../helpers/text.js"
 import { CLIENT_ID_LENGTH_LIMIT } from "../constants/defaults.js"
 import { isMetadataDocumentClientId } from "../helpers/client-fields.js"
 import type { HandlerContext } from "../interfaces/context.js"
@@ -40,8 +41,8 @@ function serverIdentity(value: string): string | undefined {
     return undefined
   }
 
-  const host = url.hostname.replace(/\.+$/, "")
-  const path = url.pathname.replace(/\/+$/, "")
+  const host = trimTrailing(url.hostname, ".")
+  const path = trimTrailing(url.pathname, "/")
 
   return `${url.protocol}//${host}:${url.port}${path}`
 }

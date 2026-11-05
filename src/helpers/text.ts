@@ -79,3 +79,20 @@ export function isScopeToken(value: string): boolean {
 
   return true
 }
+
+/**
+ * Remove every trailing occurrence of one character, in linear time. Used in
+ * place of an end-anchored repeat pattern such as `/\/+$/`, whose regular
+ * expression engine cost grows polynomially on long runs of the character.
+ *
+ * @param text - The string to trim, for example a URL path or host name.
+ * @param char - The single character to strip from the end, such as `"/"`.
+ * @returns `text` without any trailing `char`.
+ */
+export function trimTrailing(text: string, char: string): string {
+  let end = text.length
+
+  while (end > 0 && text[end - 1] === char) end -= 1
+
+  return text.slice(0, end)
+}

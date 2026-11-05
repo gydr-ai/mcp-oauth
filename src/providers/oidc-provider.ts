@@ -1,3 +1,4 @@
+import { trimTrailing } from "../helpers/text.js"
 import {
   createRemoteJWKSet,
   customFetch,
@@ -108,7 +109,7 @@ export function createOidcProvider(
     if (discovery !== null) return discovery
 
     const running = (async () => {
-      const base = options.issuer.replace(/\/+$/, "")
+      const base = trimTrailing(options.issuer, "/")
       let response: Response
 
       try {
