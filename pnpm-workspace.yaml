@@ -1,0 +1,23 @@
+# Supply-chain hardening (pnpm 11).
+# Refuse to resolve a version published less than 7 days ago. Worms such as
+# Shai-Hulud spread through freshly published versions that were found and
+# pulled within days.
+minimumReleaseAge: 10080
+# Never run install scripts from dependencies.
+strictDepBuilds: true
+allowBuilds:
+  esbuild: false # binary comes from its optional platform package; its postinstall only verifies it
+# Fail if a package's provenance or trusted-publisher evidence is weaker than
+# in an earlier version: the signature of a hijacked maintainer account.
+trustPolicy: no-downgrade
+# Refuse dependencies resolved from git URLs or tarballs.
+blockExoticSubdeps: true
+# Security overrides for transitive dev dependencies. Remove each once the
+# packages that pull it in depend on a patched version themselves.
+overrides:
+  # GHSA-g3hv-75wg-m249 (ReDoS-style DoS), via eslint and typescript-eslint.
+  minimatch: "11.0.3"
+  # TEMPORARY: @gydr-ai/safe-fetch is developed beside this package and is not
+  # published yet. Remove this override before the first release so the
+  # published ^0.1.0 range resolves from the registry.
+  "@gydr-ai/safe-fetch": "link:../safe-fetch"

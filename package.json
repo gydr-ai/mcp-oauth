@@ -1,0 +1,73 @@
+{
+  "name": "@gydr-ai/mcp-oauth",
+  "version": "0.1.0",
+  "description": "OAuth 2.1 authorization server and resource-server guard for remote MCP servers, in front of any OIDC identity provider. No token passthrough, consent on every authorization, DCR and Client ID Metadata Documents.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "oauth",
+    "oauth2.1",
+    "authorization-server",
+    "oidc",
+    "pkce",
+    "dynamic-client-registration",
+    "client-id-metadata-document",
+    "security"
+  ],
+  "homepage": "https://github.com/gydr-ai/mcp-oauth#readme",
+  "bugs": "https://github.com/gydr-ai/mcp-oauth/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gydr-ai/mcp-oauth.git"
+  },
+  "license": "Apache-2.0",
+  "author": "Gydr.ai",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/types/index.d.ts",
+  "files": [
+    "dist",
+    "NOTICE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22.12"
+  },
+  "packageManager": "pnpm@11.1.2",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write . && eslint --fix .",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "check": "pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm build && pnpm test:dist",
+    "test:dist": "node scripts/check-dist.mjs"
+  },
+  "dependencies": {
+    "@gydr-ai/safe-fetch": "^0.1.0",
+    "jose": "^6.2.13"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "@vitest/coverage-v8": "4.1.12",
+    "@vitest/eslint-plugin": "1.6.28",
+    "esbuild": "0.28.2",
+    "eslint": "10.13.0",
+    "eslint-plugin-jsdoc": "65.4.2",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1",
+    "vitest": "4.1.12"
+  }
+}
