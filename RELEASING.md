@@ -35,15 +35,22 @@ it from `../safe-fetch`, and CI cannot install. So:
 
 ## One-time setup
 
-npm can only trust a workflow for a package that already exists, so the
-first version is published once by a maintainer.
+npm only lets you trust a workflow for a package that already exists, and a
+package only exists once a version is published. So the name is reserved
+once with an inert placeholder, and every real version, the first included,
+is published by CI with provenance. No npm token is created at any point.
 
-1. **First publish**: tag the initial commit `v0.1.0`, create its GitHub
-   release, then from a clean checkout of that tag:
+1. **Reserve the name** (from a clean checkout of `main`, logged in to npm
+   with 2FA):
+
    ```bash
-   pnpm install --frozen-lockfile && pnpm check
-   npm publish --access public   # asks for your npm 2FA code
+   node scripts/publish-placeholder.mjs
    ```
+
+   This publishes `0.0.0-placeholder` (a README and a `package.json`, no
+   code) under the `placeholder` dist-tag. It refuses to run if the package
+   already exists.
+
 2. **Trusted publisher**: on npmjs.com open the package → Settings →
    Trusted publishing → GitHub Actions, and enter:
    - Organization or user: `gydr-ai`
@@ -53,10 +60,17 @@ first version is published once by a maintainer.
    - Allowed actions: tick `npm publish`
 3. **Lock it down**: Settings → Publishing access → _Require two-factor
    authentication and disallow tokens_.
-4. **GitHub environment**: Settings → Environments → `npm` → add yourself
+4. **First real release**: merge the release pull request and approve the
+   `npm` deployment. Then deprecate the placeholder:
+
+   ```bash
+   npm deprecate @gydr-ai/mcp-oauth@0.0.0-placeholder "Placeholder with no code; use @gydr-ai/mcp-oauth@latest"
+   ```
+
+5. **GitHub environment**: Settings → Environments → `npm` → add yourself
    (or the maintainers team) as a required reviewer. The setup script
    already limits deployments to `main`.
-5. **Optional GitHub App** so CI also runs on the release pull request:
+6. **Optional GitHub App** so CI also runs on the release pull request:
    create an org-owned GitHub App with _Contents_ and _Pull requests_
    read/write, install it on this repository, then set the repository
    variable `RELEASE_APP_ID` and secret `RELEASE_APP_PRIVATE_KEY`. Without
