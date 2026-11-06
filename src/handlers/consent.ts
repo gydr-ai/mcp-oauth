@@ -4,6 +4,7 @@ import {
   FORM_MEDIA_TYPE,
 } from "../constants/protocol.js"
 import { consentPageResponse } from "../core/consent-page.js"
+import { initialGrantExpiry } from "../core/grant-expiry.js"
 import { grantSummary } from "../core/grant-summary.js"
 import { revokeSealedUpstreamToken } from "../core/grants.js"
 import { decide } from "../core/policy.js"
@@ -26,10 +27,18 @@ import {
 import { buildRedirect } from "../helpers/redirect-uris.js"
 import { redirect } from "../helpers/responses.js"
 import { hasExpired } from "../helpers/time.js"
+import { setTimeout as sleep } from "node:timers/promises"
 import { constantTimeEqual, randomToken, sha256Hex } from "../helpers/tokens.js"
 import type { HookClient } from "../interfaces/consent.js"
 import type { HandlerContext } from "../interfaces/context.js"
 import type { ConsentRequest, GrantRecord } from "../interfaces/records.js"
+
+/** How often a repeated submission looks for the first one's answer, in ms. */
+const REPLAY_POLL_MS = 200
+
+/** What a submission left for a repeat: its answer, or that it is still being decided. */
+type RememberedAnswer =
+  { readonly location: string } | { readonly pending: true }
 
 /** The package's own consent form fields; never passed to `readConsentFields`. */
 const RESERVED_FIELDS: readonly string[] = Object.values(CONSENT_FIELDS)
@@ -273,38 +282,111 @@ export async function handleConsent(
     binding === undefined
       ? undefined
       : sha256Hex(`${sha256Hex(binding)}:${sha256Hex(formToken)}`)
-  const replay = async (): Promise<Response> => {
-    if (replayKey === undefined || store.getConsentOutcome === undefined) {
-      return ended()
+  const remembers =
+    replayKey !== undefined &&
+    options.consentReplayMs > 0 &&
+    store.putConsentOutcome !== undefined &&
+    store.getConsentOutcome !== undefined
+  // Remember this submission's answer, or that it is still being decided,
+  // for a repeat from the same browser. Sealed: the location may carry an
+  // authorization code. The expiry travels inside, so a store that keeps it
+  // longer changes nothing.
+  // Best effort: it only serves a repeat, so a failed write must never fail
+  // the submission itself (a repeat then sees the error page).
+  const remember = async (answer: RememberedAnswer): Promise<void> => {
+    if (!remembers) return
+
+    try {
+      const expiresAt = options.now() + options.consentReplayMs
+
+      await store.putConsentOutcome?.(
+        replayKey,
+        await sealer.seal(JSON.stringify({ ...answer, expiresAt }), replayKey),
+        expiresAt,
+      )
+    } catch {
+      // Nothing to undo; see above.
     }
+  }
+  // The last value read while polling: an unchanged "pending" mark is not
+  // opened (decrypted) again.
+  let lastSealed: string | undefined
+  let lastAnswer: RememberedAnswer | undefined
+  let lastExpiresAt = 0
+  const recall = async (): Promise<RememberedAnswer | undefined> => {
+    if (!remembers) return undefined
 
-    const sealed = await store.getConsentOutcome(replayKey)
+    const sealed = await store.getConsentOutcome?.(replayKey)
 
-    if (sealed === undefined) return ended()
+    if (sealed === undefined) return undefined
+
+    if (sealed === lastSealed && lastAnswer !== undefined) {
+      return "pending" in lastAnswer &&
+        !hasExpired(lastExpiresAt, options.now())
+        ? lastAnswer
+        : undefined
+    }
 
     let outcome: unknown
 
     try {
       outcome = JSON.parse(await sealer.open(sealed, replayKey))
     } catch {
-      return ended()
+      return undefined
     }
 
     // The window is enforced here, never left to the store's expiry.
     if (
       !isRecord(outcome) ||
-      typeof outcome.location !== "string" ||
       typeof outcome.expiresAt !== "number" ||
       hasExpired(outcome.expiresAt, options.now())
     ) {
-      return ended()
+      return undefined
     }
 
-    return redirect(outcome.location, [dropCookie], 303)
+    lastSealed = sealed
+    lastExpiresAt = outcome.expiresAt
+    lastAnswer =
+      outcome.pending === true
+        ? { pending: true }
+        : typeof outcome.location === "string"
+          ? { location: outcome.location }
+          : undefined
+
+    return lastAnswer
+  }
+  // A repeat of a submission this browser already made. While the first is
+  // still being decided, wait for its answer within the replay window. An
+  // unverified repeat (`verified: false`) waits only once the first has left
+  // its "pending" mark, so a forged one ends at once; a repeat whose form
+  // token and browser cookie were just verified also waits for a mark the
+  // first has not written yet (both took the same request a moment apart).
+  const replay = async (verified: boolean): Promise<Response> => {
+    if (!remembers) return ended()
+
+    const attempts = Math.ceil(options.consentReplayMs / REPLAY_POLL_MS)
+
+    for (let attempt = 0; ; attempt += 1) {
+      const answer = await recall()
+
+      if (answer !== undefined && "location" in answer) {
+        return redirect(answer.location, [dropCookie], 303)
+      }
+
+      if (
+        (answer === undefined && !verified) ||
+        attempt >= attempts ||
+        request.signal.aborted
+      ) {
+        return ended()
+      }
+
+      await sleep(REPLAY_POLL_MS)
+    }
   }
   const consent = await store.getConsentRequest(interactionId)
 
-  if (consent === undefined) return replay()
+  if (consent === undefined) return replay(false)
 
   const releaseUpstream = () =>
     revokeSealedUpstreamToken(
@@ -366,7 +448,12 @@ export async function handleConsent(
   // submissions only one gets it, and the other is answered like the first.
   const taken = await store.consumeConsentRequest(interactionId)
 
-  if (taken?.csrfHash !== consent.csrfHash) return replay()
+  if (taken?.csrfHash !== consent.csrfHash) return replay(true)
+
+  // From here the answer can take a while (`beforeGrant`, `afterGrant`):
+  // mark it as being decided, so a double-click waits for it instead of
+  // seeing an error page.
+  await remember({ pending: true })
 
   const answer = async (
     params: Readonly<Record<string, string | undefined>>,
@@ -377,22 +464,7 @@ export async function handleConsent(
       iss: options.issuer,
     })
 
-    if (
-      replayKey !== undefined &&
-      options.consentReplayMs > 0 &&
-      store.putConsentOutcome !== undefined &&
-      store.getConsentOutcome !== undefined
-    ) {
-      const expiresAt = options.now() + options.consentReplayMs
-
-      // Sealed: the location may carry an authorization code. The expiry
-      // travels inside, so a store that keeps it longer changes nothing.
-      await store.putConsentOutcome(
-        replayKey,
-        await sealer.seal(JSON.stringify({ location, expiresAt }), replayKey),
-        expiresAt,
-      )
-    }
+    await remember({ location })
 
     return redirect(location, [dropCookie], 303)
   }
@@ -451,7 +523,8 @@ export async function handleConsent(
     scopes: consent.scopes,
     resource: consent.resource,
     createdAt: now,
-    expiresAt: now + options.grantTtlMs,
+    expiresAt: initialGrantExpiry(options, now),
+    redirectUri: consent.redirectUri,
     ...(grantData !== undefined ? { data: grantData } : {}),
     ...(consent.allowRefresh !== undefined
       ? { allowRefresh: consent.allowRefresh }

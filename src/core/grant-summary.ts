@@ -29,5 +29,8 @@ export function grantSummary(grant: GrantRecord): GrantSummary {
       ? { allowRefresh: grant.allowRefresh }
       : {}),
     ...(grant.data !== undefined ? { data: grant.data } : {}),
+    ...(grant.redirectUri !== undefined
+      ? { redirectUri: grant.redirectUri }
+      : {}),
   })
 }

@@ -31,6 +31,7 @@ import type {
   ErrorPageContext,
 } from "../interfaces/pages.js"
 import { checkedClock } from "../helpers/time.js"
+import { parseGrantTypes } from "../helpers/client-fields.js"
 
 /** A CSP script hash: `sha256-` and the base64 of a 32-byte digest. */
 const SCRIPT_HASH = /^sha256-[A-Za-z0-9+/]{43}=$/
@@ -109,6 +110,28 @@ export function resolveOptions(
       LIFETIME_BOUNDS[key].min,
       LIFETIME_BOUNDS[key].max,
     )
+  const grantIdleSeconds = lifetime("grantIdle") / 1000
+
+  if (
+    grantIdleSeconds > 0 &&
+    grantIdleSeconds < lifetime("accessToken") / 1000
+  ) {
+    throw new McpAuthConfigError(
+      "lifetimes.grantIdle must be 0 or at least lifetimes.accessToken",
+    )
+  }
+
+  const defaultGrantTypes = parseGrantTypes(
+    options.defaultGrantTypes ?? ["authorization_code"],
+    true,
+  )
+
+  if (defaultGrantTypes === undefined) {
+    throw new McpAuthConfigError(
+      "defaultGrantTypes may only list authorization_code and refresh_token, and must include authorization_code",
+    )
+  }
+
   const paths = resolvePaths(issuerPath, options.paths)
   const cookiePrefix = options.cookiePrefix ?? DEFAULT_COOKIE_PREFIX
 
@@ -183,6 +206,8 @@ export function resolveOptions(
     accessTokenTtlMs: lifetime("accessToken"),
     refreshTokenTtlMs: lifetime("refreshToken"),
     grantTtlMs: lifetime("grant"),
+    grantIdleMs: lifetime("grantIdle"),
+    defaultGrantTypes,
     codeTtlMs: lifetime("authorizationCode"),
     pendingTtlMs: lifetime("pendingAuthorization"),
     clientMetadataCacheMs: lifetime("clientMetadataCache"),

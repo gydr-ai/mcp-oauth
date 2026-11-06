@@ -95,7 +95,11 @@ export async function handleRegister(
 
   // Omitted grant_types means authorization_code alone (RFC 7591 § 2): a
   // client has to ask for refresh tokens explicitly.
-  const grantTypes = parseGrantTypes(body.grant_types, true)
+  const grantTypes = parseGrantTypes(
+    body.grant_types,
+    true,
+    options.defaultGrantTypes,
+  )
 
   if (grantTypes === undefined) {
     return badMetadata(

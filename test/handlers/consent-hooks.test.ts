@@ -131,9 +131,14 @@ describe("consent answer", () => {
     const response = await handled(wrapped.auth, consentRequest(screen))
     const code = locationOf(response).searchParams.get("code") ?? ""
 
-    expect(saved).toHaveLength(1)
-    expect(saved[0]).not.toContain(code)
-    expect(saved[0]).not.toContain("client.example.org")
+    // The "being decided" mark, then the answer: both sealed.
+    expect(saved).toHaveLength(2)
+
+    for (const value of saved) {
+      expect(value).not.toContain(code)
+      expect(value).not.toContain("client.example.org")
+      expect(value).not.toContain("pending")
+    }
   })
 
   it("refuses a consentReplaySeconds outside 0–60", () => {
