@@ -431,10 +431,36 @@ verifier against it first.
 (sent on refresh under `lifetimes.grantIdle`); `putGrant` must keep the
 whole record, including the optional `redirectUri`.
 
-Three methods are optional: `putConsentOutcome` / `getConsentOutcome`
-(answering a repeated consent submission; one submission writes twice, the
-"being decided" mark and then the answer, so a later write replaces an
-earlier one) and `listGrantsBySubject` (`revokeGrantsForSubject`).
+Four methods are optional: `putRefreshTokenReplacement` (recommended; see
+below), `putConsentOutcome` / `getConsentOutcome` (answering a repeated
+consent submission; one submission writes twice, the "being decided" mark
+and then the answer, so a later write replaces an earlier one) and
+`listGrantsBySubject` (`revokeGrantsForSubject`).
+
+**Refresh retries.** `putRefreshTokenReplacement(hash, sealedReplacement)`
+saves, on the refresh token record just used, the pair it was exchanged
+for, encrypted by your `SecretSealer`; keep every other field (`usedAt`
+included) and return `sealedReplacement` from `getRefreshToken` and
+`useRefreshToken` afterwards. A refresh token presented again within
+`refreshReuseGraceSeconds` then receives exactly that pair, so a copied
+token never starts a second chain: once either holder rotates the shared
+pair, the other's next use is a replay and the grant ends. A retry that
+arrives while the first exchange is still storing its pair gets
+`503 temporarily_unavailable`. Without the method, a retry within the
+window receives an access token only, with no refresh token, and the
+client keeps the refresh token from the response it lost (re-presenting the
+original one within the window if that response never arrived).
+
+**Key length.** Any `client_id` a caller sends, up to 2,048 characters,
+can reach `getClient`, and a Client ID Metadata Document URL of that length
+reaches `getCachedClientMetadata` and `putCachedClientMetadata` as a key
+(and grants and tokens carry it as a field). Some databases cap key or index
+length near that (a DynamoDB partition key is at most 2,048 bytes, a MySQL
+index prefix often 767 or 3,072 bytes), especially once you add a prefix.
+Hash long ids into the key, or refuse them in the adapter (`getClient` and
+`getCachedClientMetadata` resolving `undefined`, `putCachedClientMetadata`
+skipping the write); never truncate one, since two ids would then share a
+record, and never let a too-long key throw.
 
 Good fits: PostgreSQL or MySQL (`UPDATE … WHERE used_at IS NULL`,
 `DELETE … RETURNING`), Redis (`GETDEL`, Lua), MongoDB (`findOneAndUpdate`),
@@ -485,35 +511,35 @@ evict the least recently used grant-less dynamic client first when full.
 
 ### Options
 
-| Option                                  | Default                                                                 | Meaning                                                                                                                                                    |
-| --------------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `issuer`                                | required                                                                | HTTPS URL; endpoints live under its path.                                                                                                                  |
-| `resource`                              | required                                                                | Canonical URL of your MCP endpoint, the audience of every token.                                                                                           |
-| `identityProvider`                      | required                                                                | `createOidcProvider(…)` or your own `IdentityProvider`.                                                                                                    |
-| `store`                                 | required                                                                | Your `OAuthStore`.                                                                                                                                         |
-| `sealer`                                | required                                                                | `createAesGcmSealer(…)` or your own `SecretSealer`.                                                                                                        |
-| `scopes` / `defaultScopes`              | `["mcp"]` / all                                                         | Scopes offered, and those granted when none are asked for.                                                                                                 |
-| `scopeDescriptions`                     | none                                                                    | Consent-screen text per scope.                                                                                                                             |
-| `resourceName`                          | none                                                                    | RFC 9728 `resource_name`.                                                                                                                                  |
-| `clients`                               | none                                                                    | Pre-registered public clients.                                                                                                                             |
-| `dynamicClientRegistration`             | `true`                                                                  | Serve `POST /register`. Deprecated by MCP 2026-07-28 in favour of metadata documents; `dynamicClientRegistration: false` turns it off.                     |
-| `clientIdMetadataDocuments`             | `true`                                                                  | Accept HTTPS URL client ids.                                                                                                                               |
-| `fetchClientMetadata(url, { signal })`  | SSRF-safe fetcher                                                       | Replace how metadata documents are downloaded. Must stay SSRF-safe.                                                                                        |
-| `lifetimes`                             | see below                                                               | Token and flow lifetimes, in seconds.                                                                                                                      |
-| `limits`                                | see below                                                               | Sizes and counts.                                                                                                                                          |
-| `defaultGrantTypes`                     | `["authorization_code"]`                                                | Grant types for a client that registers or publishes none, applied at registration or fetch. Must include `authorization_code`. `clients` default to both. |
-| `refreshReuseGraceSeconds`              | `10`                                                                    | Retry window (0–300) for a just-used refresh token. `0` treats any reuse as replay.                                                                        |
-| `consentReplaySeconds`                  | `10`                                                                    | Window (0–60) in which a repeated consent submission from the same browser gets the same redirect.                                                         |
-| `scriptHashes`                          | none                                                                    | `sha256-…` hashes of inline scripts a custom consent page may run.                                                                                         |
-| `paths`                                 | `/authorize`, `/callback`, `/consent`, `/token`, `/register`, `/revoke` | Route paths under the issuer path: one leading `/`, no `//`, `\`, dot segments or whitespace, distinct, and never a metadata path or the resource path.    |
-| `cookiePrefix`                          | `__Host-mcp-auth-`                                                      | Must start with `__Host-`.                                                                                                                                 |
-| `rateLimit(key, scope)`                 | none                                                                    | Resolve `true` to continue; anything else (including a throw) answers 429.                                                                                 |
-| `getClientIp(request)` / `trustProxy`   | none / `false`                                                          | Rate-limit key. `trustProxy` uses the right-most `X-Forwarded-For` entry.                                                                                  |
-| `renderConsentPage` / `renderErrorPage` | built in                                                                | Your own pages; see `ConsentPageContext`.                                                                                                                  |
-| `onEvent(event)`                        | none                                                                    | Typed audit events; never contain secrets.                                                                                                                 |
-| policy and enrichment hooks             | none                                                                    | See [Extending safely](#extending-safely).                                                                                                                 |
-| `allowInsecureLocalhost`                | `false`                                                                 | Allow an `http://localhost` issuer and resource in development.                                                                                            |
-| `now`                                   | `Date.now`                                                              | Clock, for tests. A non-finite value fails the request instead of disabling expiry checks.                                                                 |
+| Option                                  | Default                                                                 | Meaning                                                                                                                                                                        |
+| --------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `issuer`                                | required                                                                | HTTPS URL; endpoints live under its path.                                                                                                                                      |
+| `resource`                              | required                                                                | Canonical URL of your MCP endpoint, the audience of every token.                                                                                                               |
+| `identityProvider`                      | required                                                                | `createOidcProvider(…)` or your own `IdentityProvider`.                                                                                                                        |
+| `store`                                 | required                                                                | Your `OAuthStore`.                                                                                                                                                             |
+| `sealer`                                | required                                                                | `createAesGcmSealer(…)` or your own `SecretSealer`.                                                                                                                            |
+| `scopes` / `defaultScopes`              | `["mcp"]` / all                                                         | Scopes offered, and those granted when none are asked for.                                                                                                                     |
+| `scopeDescriptions`                     | none                                                                    | Consent-screen text per scope.                                                                                                                                                 |
+| `resourceName`                          | none                                                                    | RFC 9728 `resource_name`.                                                                                                                                                      |
+| `clients`                               | none                                                                    | Pre-registered public clients.                                                                                                                                                 |
+| `dynamicClientRegistration`             | `true`                                                                  | Serve `POST /register`. Deprecated by MCP 2026-07-28 in favour of metadata documents; `dynamicClientRegistration: false` turns it off.                                         |
+| `clientIdMetadataDocuments`             | `true`                                                                  | Accept HTTPS URL client ids.                                                                                                                                                   |
+| `fetchClientMetadata(url, { signal })`  | SSRF-safe fetcher                                                       | Replace how metadata documents are downloaded. Must stay SSRF-safe.                                                                                                            |
+| `lifetimes`                             | see below                                                               | Token and flow lifetimes, in seconds.                                                                                                                                          |
+| `limits`                                | see below                                                               | Sizes and counts.                                                                                                                                                              |
+| `defaultGrantTypes`                     | `["authorization_code"]`                                                | Grant types for a client that registers or publishes none, applied at registration or fetch. Must include `authorization_code`. `clients` default to both.                     |
+| `refreshReuseGraceSeconds`              | `10`                                                                    | Retry window (0–300) for a just-used refresh token: a retry gets the same pair again (see `putRefreshTokenReplacement`), never a second chain. `0` treats any reuse as replay. |
+| `consentReplaySeconds`                  | `10`                                                                    | Window (0–60) in which a repeated consent submission from the same browser gets the same redirect.                                                                             |
+| `scriptHashes`                          | none                                                                    | `sha256-…` hashes of inline scripts a custom consent page may run.                                                                                                             |
+| `paths`                                 | `/authorize`, `/callback`, `/consent`, `/token`, `/register`, `/revoke` | Route paths under the issuer path: one leading `/`, no `//`, `\`, dot segments or whitespace, distinct, and never a metadata path or the resource path.                        |
+| `cookiePrefix`                          | `__Host-mcp-auth-`                                                      | Must start with `__Host-`.                                                                                                                                                     |
+| `rateLimit(key, scope)`                 | none                                                                    | Resolve `true` to continue; anything else (including a throw) answers 429.                                                                                                     |
+| `getClientIp(request)` / `trustProxy`   | none / `false`                                                          | Rate-limit key. `trustProxy` uses the right-most `X-Forwarded-For` entry.                                                                                                      |
+| `renderConsentPage` / `renderErrorPage` | built in                                                                | Your own pages; see `ConsentPageContext`.                                                                                                                                      |
+| `onEvent(event)`                        | none                                                                    | Typed audit events; never contain secrets.                                                                                                                                     |
+| policy and enrichment hooks             | none                                                                    | See [Extending safely](#extending-safely).                                                                                                                                     |
+| `allowInsecureLocalhost`                | `false`                                                                 | Allow an `http://localhost` issuer and resource in development.                                                                                                                |
+| `now`                                   | `Date.now`                                                              | Clock, for tests. A non-finite value fails the request instead of disabling expiry checks.                                                                                     |
 
 <details>
 <summary><strong><code>lifetimes</code></strong> (seconds)</summary>
@@ -659,7 +685,9 @@ off, and concurrent requests for one URL share a download.
   rotates refresh tokens with no grace period and several processes may
   renew one grant at once, route a grant's renewals to one process.
 - Catch a refresh token copied and used within `refreshReuseGraceSeconds`
-  of the real use. Use `0` if your clients never retry.
+  of the real use at that moment: inside the window both holders get the
+  same pair, and the grant ends only when their chains diverge. Use `0` if
+  your clients never retry.
 - Protect against a compromised browser, a client the person chose to
   approve, or a compromised identity provider.
 

@@ -361,8 +361,10 @@ export interface McpAuthOptions {
   readonly lifetimes?: Lifetimes
   /**
    * Seconds after a refresh token is used during which presenting it again
-   * returns another token pair (a lost response, a retried request) instead
-   * of ending the grant; `0` turns the window off. Default: 10.
+   * (a lost response, a retried request) returns the pair the first use
+   * issued instead of ending the grant; with a store that lacks
+   * `putRefreshTokenReplacement`, a new access token only. Never a second
+   * refresh token chain. `0` turns the window off. Default: 10.
    */
   readonly refreshReuseGraceSeconds?: number
   /** Accept Client ID Metadata Document client ids. Default: `true`. */

@@ -382,6 +382,14 @@ export interface RefreshTokenRecord {
   readonly expiresAt: number
   /** Set once, atomically, by `OAuthStore.useRefreshToken`. */
   readonly usedAt?: number
+  /**
+   * The access and refresh token pair this token was exchanged for,
+   * encrypted by the `SecretSealer`. Set by the optional
+   * `OAuthStore.putRefreshTokenReplacement` after the token is spent, and
+   * returned by `getRefreshToken` and `useRefreshToken` from then on, so a
+   * retry inside `refreshReuseGraceSeconds` receives that same pair.
+   */
+  readonly sealedReplacement?: string
 }
 
 /**

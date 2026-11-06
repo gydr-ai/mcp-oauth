@@ -263,5 +263,14 @@ export function createMemoryStore(
         return { record: marked }
       })
     },
+    putRefreshTokenReplacement(tokenHash, sealedReplacement) {
+      return settle(() => {
+        const token = refresh.get(tokenHash)
+
+        if (token !== undefined) {
+          refresh.set(tokenHash, { ...token, sealedReplacement })
+        }
+      })
+    },
   }
 }
