@@ -110,6 +110,17 @@ export function resolveOptions(
       LIFETIME_BOUNDS[key].min,
       LIFETIME_BOUNDS[key].max,
     )
+  const grantIdleSeconds = lifetime("grantIdle") / 1000
+
+  if (
+    grantIdleSeconds > 0 &&
+    grantIdleSeconds < lifetime("accessToken") / 1000
+  ) {
+    throw new McpAuthConfigError(
+      "lifetimes.grantIdle must be 0 or at least lifetimes.accessToken",
+    )
+  }
+
   const defaultGrantTypes = parseGrantTypes(
     options.defaultGrantTypes ?? ["authorization_code"],
     true,

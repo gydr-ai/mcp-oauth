@@ -33,8 +33,7 @@ export function validateClientMetadata(
   url: string,
   document: unknown,
   now: number,
-  options: Pick<ResolvedOptions, "scopes" | "limits"> &
-    Partial<Pick<ResolvedOptions, "defaultGrantTypes">>,
+  options: Pick<ResolvedOptions, "scopes" | "limits" | "defaultGrantTypes">,
 ): ClientRecord {
   if (!isRecord(document)) throw new ClientMetadataError("not_an_object")
 
@@ -301,8 +300,10 @@ export function cacheControlSeconds(header: string | null): number | undefined {
 export async function fetchClientMetadata(
   url: string,
   now: number,
-  options: Pick<ResolvedOptions, "scopes" | "limits" | "fetchClientMetadata"> &
-    Partial<Pick<ResolvedOptions, "defaultGrantTypes">>,
+  options: Pick<
+    ResolvedOptions,
+    "scopes" | "limits" | "fetchClientMetadata" | "defaultGrantTypes"
+  >,
 ): Promise<FetchedClient> {
   const fetcher = options.fetchClientMetadata ?? bundledFetcher(options)
   const signal = AbortSignal.timeout(options.limits.clientMetadataTimeoutMs)

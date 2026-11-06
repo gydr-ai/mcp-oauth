@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
 
+import { slidGrantExpiry } from "../../src/core/grant-expiry.js"
+import type { McpAuthEvent, OAuthStore } from "../../src/index.js"
+
 import {
   connect,
   consentRequest,
@@ -271,5 +274,131 @@ describe("defaultGrantTypes", () => {
         ],
       }),
     ).toThrow()
+  })
+})
+
+describe("review follow-ups", () => {
+  it("still approves when remembering the answer fails", async () => {
+    const base = setup()
+    const failing: OAuthStore = {
+      ...base.store,
+      putConsentOutcome: () => Promise.reject(new Error("store down")),
+    }
+    const h = setup({ store: failing })
+    const clientId = await registeredClientId(h.auth)
+    const screen = await reachConsent(h, clientId, newVerifier())
+    const response = await handled(h.auth, consentRequest(screen))
+
+    expect(response.status).toBe(303)
+    expect(locationOf(response).searchParams.get("code")).toBeTruthy()
+  })
+
+  it("answers a truly simultaneous double-click the same, even when the mark is slow to land", async () => {
+    const base = setup()
+    const put = base.store.putConsentOutcome?.bind(base.store)
+    const slowStore: OAuthStore = {
+      ...base.store,
+      putConsentOutcome: async (key, value, at) => {
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        await put?.(key, value, at)
+      },
+    }
+    const h = setup({ store: slowStore })
+    const clientId = await registeredClientId(h.auth)
+    const screen = await reachConsent(h, clientId, newVerifier())
+    const [a, b] = await Promise.all([
+      handled(h.auth, consentRequest(screen)),
+      handled(h.auth, consentRequest(screen)),
+    ])
+
+    expect([a.status, b.status]).toEqual([303, 303])
+    expect(locationOf(b).searchParams.get("code")).toBe(
+      locationOf(a).searchParams.get("code"),
+    )
+  })
+
+  it("answers a repeated decline with the same redirect", async () => {
+    const h = setup()
+    const clientId = await registeredClientId(h.auth)
+    const screen = await reachConsent(h, clientId, newVerifier())
+    const first = await handled(h.auth, consentRequest(screen, "deny"))
+    const second = await handled(h.auth, consentRequest(screen, "deny"))
+
+    expect(second.status).toBe(303)
+    expect(second.headers.get("location")).toBe(first.headers.get("location"))
+    expect(locationOf(second).searchParams.get("error")).toBe("access_denied")
+  })
+
+  it("refuses a grantIdle shorter than one access token", () => {
+    expect(() =>
+      setup({ lifetimes: { accessToken: 1800, grantIdle: 600 } }),
+    ).toThrow()
+    expect(() =>
+      setup({ lifetimes: { accessToken: 1800, grantIdle: 1800 } }),
+    ).not.toThrow()
+  })
+
+  it("restores the absolute limit on refresh once grantIdle is turned off", () => {
+    const options = { grantTtlMs: 90 * DAY * 1000, grantIdleMs: 0 }
+    const grant = { createdAt: 0, expiresAt: 30 * DAY * 1000 }
+
+    expect(slidGrantExpiry(options, grant, 10 * DAY * 1000)).toBe(
+      90 * DAY * 1000,
+    )
+    expect(
+      slidGrantExpiry(options, { ...grant, expiresAt: 90 * DAY * 1000 }, 1),
+    ).toBeUndefined()
+  })
+
+  it("applies defaultGrantTypes to a metadata-document client", async () => {
+    const docUrl = "https://app.example.com/client.json"
+    const h = setup({
+      defaultGrantTypes: ["authorization_code", "refresh_token"],
+      fetchClientMetadata: () =>
+        Promise.resolve(
+          Response.json({
+            client_id: docUrl,
+            client_name: "Doc Client",
+            redirect_uris: [REDIRECT],
+            token_endpoint_auth_method: "none",
+          }),
+        ),
+    })
+    const verifier = newVerifier()
+    const screen = await reachConsent(h, docUrl, verifier)
+    const consent = await handled(h.auth, consentRequest(screen))
+    const tokens = (await (
+      await handled(
+        h.auth,
+        tokenRequest({
+          grant_type: "authorization_code",
+          client_id: docUrl,
+          code: locationOf(consent).searchParams.get("code") ?? "",
+          redirect_uri: REDIRECT,
+          code_verifier: verifier,
+          resource: RESOURCE,
+        }),
+      )
+    ).json()) as Record<string, unknown>
+
+    expect(tokens.refresh_token).toBeTypeOf("string")
+  })
+
+  it("shows the redirect URI in the grant_revoked event", async () => {
+    const events: McpAuthEvent[] = []
+    const h = setup({
+      onEvent: (event) => {
+        events.push(event)
+      },
+    })
+    const { pair } = await connect(h)
+
+    await h.auth.revokeGrant(await grantIdOf(h, pair.access_token))
+
+    const revoked = events.find((event) => event.type === "grant_revoked")
+
+    expect(revoked?.type === "grant_revoked" && revoked.grant.redirectUri).toBe(
+      REDIRECT,
+    )
   })
 })

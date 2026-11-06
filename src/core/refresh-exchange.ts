@@ -116,8 +116,9 @@ export async function exchangeRefreshToken(
   }
 
   // Under `lifetimes.grantIdle` a renewal extends the grant, never past its
-  // absolute limit. Only a stored extension is used: a store that did not
-  // save it leaves the grant (and the tokens below) on the old expiry.
+  // absolute limit. The tokens below follow the new expiry only when the
+  // store accepted the update; every later check reads the stored grant, so
+  // a store that ignored `expiresAt` still ends the grant on time.
   const slid = slidGrantExpiry(options, grant, now)
   const renewed =
     slid !== undefined &&

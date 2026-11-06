@@ -79,7 +79,8 @@ export interface Lifetimes {
   /**
    * Sliding limit on a grant: it also ends when it has not been renewed with
    * a refresh token for this long, and each renewal extends it again, never
-   * beyond `grant`. 0 to 34,560,000; `0` disables. Default: 0.
+   * beyond `grant`. `0` (off), or from `accessToken` up to 34,560,000.
+   * Default: 0.
    */
   readonly grantIdle?: number
   /** Authorization code lifetime, 1 to 600. Default: 60. */
@@ -326,7 +327,9 @@ export interface McpAuthOptions {
    * none. RFC 7591 § 2 reads an absent `grant_types` as
    * `["authorization_code"]`, so such a client receives no refresh token;
    * `["authorization_code", "refresh_token"]` gives it one. Must include
-   * `authorization_code`. Default: `["authorization_code"]`.
+   * `authorization_code`. Applies when a client registers or a metadata
+   * document is fetched, not to clients already registered, and not to
+   * `clients`, which default to both. Default: `["authorization_code"]`.
    */
   readonly defaultGrantTypes?: readonly (
     "authorization_code" | "refresh_token"

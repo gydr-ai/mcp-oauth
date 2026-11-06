@@ -24,8 +24,10 @@ export function initialGrantExpiry(
 }
 
 /**
- * The grant's new expiry after a refresh under `lifetimes.grantIdle`: the
- * idle window counted from now, never past the absolute limit.
+ * The grant's new expiry after a refresh: with `lifetimes.grantIdle`, the
+ * idle window counted from now, never past the absolute limit; without it,
+ * the absolute limit itself, so grants created while `grantIdle` was on are
+ * not left on a short expiry after it is turned off.
  *
  * @param options - The resolved grant lifetimes.
  * @param grant - The grant being renewed.
@@ -38,12 +40,11 @@ export function slidGrantExpiry(
   grant: Pick<GrantRecord, "createdAt" | "expiresAt">,
   now: number,
 ): number | undefined {
-  if (options.grantIdleMs <= 0) return undefined
-
-  const next = Math.min(
-    grant.createdAt + options.grantTtlMs,
-    now + options.grantIdleMs,
-  )
+  const absolute = grant.createdAt + options.grantTtlMs
+  const next =
+    options.grantIdleMs > 0
+      ? Math.min(absolute, now + options.grantIdleMs)
+      : absolute
 
   return next > grant.expiresAt ? next : undefined
 }

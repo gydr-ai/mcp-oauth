@@ -353,6 +353,7 @@ describe("metadata-document clients", () => {
       1,
       {
         scopes: ["mcp"],
+        defaultGrantTypes: ["authorization_code"],
         limits: {
           clientNameLength: 128,
           redirectUris: 8,
@@ -380,6 +381,7 @@ describe("metadata-document clients", () => {
 describe("metadata-document validation (CIMD draft-03)", () => {
   const options = {
     scopes: ["mcp"],
+    defaultGrantTypes: ["authorization_code"] as const,
     limits: {
       clientNameLength: 128,
       redirectUris: 8,
