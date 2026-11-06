@@ -7,6 +7,12 @@ const NO_STORE: Readonly<Record<string, string>> = {
   Pragma: "no-cache",
 }
 
+/**
+ * `Strict-Transport-Security` value: two years, subdomains included
+ * (RFC 6797). No `preload`: that is a decision for the domain owner.
+ */
+export const STRICT_TRANSPORT_SECURITY = "max-age=63072000; includeSubDomains"
+
 /** Open CORS for the cookie-free endpoints that browser-based clients call. */
 const CORS: Readonly<Record<string, string>> = {
   "Access-Control-Allow-Origin": "*",
@@ -202,4 +208,25 @@ export function redirect(
   for (const cookie of setCookies) headers.append("Set-Cookie", cookie)
 
   return new Response(null, { status, headers })
+}
+
+/**
+ * Add `Strict-Transport-Security` to a response this package built, so a
+ * browser that reached the server over HTTPS once never falls back to plain
+ * HTTP for it (RFC 6797). Browsers ignore the header on an HTTP response.
+ *
+ * @param response - A response built by this package (mutable headers).
+ * @param enabled - `false` leaves the response unchanged.
+ * @returns The same response.
+ * @internal
+ */
+export function withTransportSecurity(
+  response: Response,
+  enabled: boolean,
+): Response {
+  if (enabled) {
+    response.headers.set("Strict-Transport-Security", STRICT_TRANSPORT_SECURITY)
+  }
+
+  return response
 }

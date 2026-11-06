@@ -529,6 +529,7 @@ evict the least recently used grant-less dynamic client first when full.
 | `limits`                                | see below                                                               | Sizes and counts.                                                                                                                                                              |
 | `defaultGrantTypes`                     | `["authorization_code"]`                                                | Grant types for a client that registers or publishes none, applied at registration or fetch. Must include `authorization_code`. `clients` default to both.                     |
 | `refreshReuseGraceSeconds`              | `10`                                                                    | Retry window (0–300) for a just-used refresh token: a retry gets the same pair again (see `putRefreshTokenReplacement`), never a second chain. `0` treats any reuse as replay. |
+| `strictTransportSecurity`               | `true`                                                                  | Send `Strict-Transport-Security: max-age=63072000; includeSubDomains` on every response the package builds. `false` only if your proxy already sets it.                        |
 | `consentReplaySeconds`                  | `10`                                                                    | Window (0–60) in which a repeated consent submission from the same browser gets the same redirect.                                                                             |
 | `scriptHashes`                          | none                                                                    | `sha256-…` hashes of inline scripts a custom consent page may run.                                                                                                             |
 | `paths`                                 | `/authorize`, `/callback`, `/consent`, `/token`, `/register`, `/revoke` | Route paths under the issuer path: one leading `/`, no `//`, `\`, dot segments or whitespace, distinct, and never a metadata path or the resource path.                        |
@@ -660,7 +661,7 @@ off, and concurrent requests for one URL share a download.
   obtained.
 - Pages send a strict Content-Security-Policy, `X-Frame-Options: DENY`,
   `Cache-Control: no-store` and `Referrer-Policy: no-referrer`, and escape
-  every value. Client names with invisible or formatting characters are
+  every value. Every response carries `Strict-Transport-Security`. Client names with invisible or formatting characters are
   refused.
 - Tokens are 256-bit random values, stored only as SHA-256 hashes, bound to
   your resource and checked against a live grant on every request. Refresh

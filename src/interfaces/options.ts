@@ -628,6 +628,14 @@ export interface McpAuthOptions {
    */
   readonly allowInsecureLocalhost?: boolean
   /**
+   * Send `Strict-Transport-Security: max-age=63072000; includeSubDomains`
+   * on every response this package builds (endpoints, pages, redirects and
+   * `authenticate` / `unauthorized` refusals). Set `false` only when a proxy
+   * in front already sets the header, or when the issuer's subdomains must
+   * stay reachable over plain HTTP. Default: `true`.
+   */
+  readonly strictTransportSecurity?: boolean
+  /**
    * Clock in milliseconds since the epoch, for tests. A non-finite value
    * makes the request fail instead of disabling expiry checks.
    * Default: `Date.now`.
@@ -699,6 +707,8 @@ export interface ResolvedOptions {
   readonly clientIdMetadataDocuments: boolean
   /** Whether registration is served. */
   readonly dynamicClientRegistration: boolean
+  /** Whether responses carry `Strict-Transport-Security`. */
+  readonly strictTransportSecurity: boolean
   /** Endpoint paths. */
   readonly paths: Required<RoutePaths>
   /** Size and count limits. */

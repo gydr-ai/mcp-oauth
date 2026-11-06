@@ -1,6 +1,10 @@
 import { McpAuthConfigError } from "../errors/mcp-auth-config-error.js"
 import { jsonCopy } from "../helpers/json.js"
-import { methodNotAllowed, preflight } from "../helpers/responses.js"
+import {
+  methodNotAllowed,
+  preflight,
+  withTransportSecurity,
+} from "../helpers/responses.js"
 import type { McpAuth } from "../interfaces/auth.js"
 import type { McpAuthOptions } from "../interfaces/options.js"
 import type { RevokeGrant } from "../interfaces/routes.js"
@@ -71,30 +75,43 @@ export function createMcpAuth(options: McpAuthOptions): McpAuth {
       upstream.forget(id)
     })
   const routes = buildRoutes(context, revoke)
+  const secured = (response: Response) =>
+    withTransportSecurity(response, resolved.strictTransportSecurity)
+  const route = async (request: Request) => {
+    const entry = routes.get(new URL(request.url).pathname)
+
+    if (entry === undefined) return undefined
+
+    if (request.method === "OPTIONS" && entry.cors) {
+      return preflight([...entry.methods, "OPTIONS"].join(", "))
+    }
+
+    if (!entry.methods.includes(request.method)) {
+      return methodNotAllowed(entry.methods.join(", "))
+    }
+
+    return entry.run(request)
+  }
 
   return {
     async handle(request) {
-      const entry = routes.get(new URL(request.url).pathname)
+      const response = await route(request)
 
-      if (entry === undefined) return undefined
-
-      if (request.method === "OPTIONS" && entry.cors) {
-        return preflight([...entry.methods, "OPTIONS"].join(", "))
-      }
-
-      if (!entry.methods.includes(request.method)) {
-        return methodNotAllowed(entry.methods.join(", "))
-      }
-
-      return entry.run(request)
+      return response === undefined ? undefined : secured(response)
     },
-    authenticate(request) {
-      return authenticateRequest(context, request, (grantId, forceRefresh) =>
-        upstream.get(grantId, forceRefresh),
+    async authenticate(request) {
+      const result = await authenticateRequest(
+        context,
+        request,
+        (grantId, forceRefresh) => upstream.get(grantId, forceRefresh),
       )
+
+      if (!result.ok) secured(result.response)
+
+      return result
     },
     unauthorized(_request, error) {
-      return bearerChallenge(context, error)
+      return secured(bearerChallenge(context, error))
     },
     revokeGrant(grantId) {
       return revoke(grantId, "revoke_grant_call")
