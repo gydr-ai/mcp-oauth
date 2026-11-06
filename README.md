@@ -12,7 +12,12 @@
   <img alt="MCP 2026-07-28" src="https://img.shields.io/badge/MCP-2026--07--28-6f42c1" />
   <img alt="OAuth 2.1 draft-17" src="https://img.shields.io/badge/OAuth_2.1-draft--17-0969da" />
   <img alt="CIMD draft-03" src="https://img.shields.io/badge/CIMD-draft--03-0969da" />
+  <img alt="Node.js 22.12+" src="https://img.shields.io/node/v/@gydr-ai/mcp-oauth" />
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue" /></a>
+</p>
+
+<p align="center">
+  <sub>Built and maintained by <a href="https://gydr.ai"><strong>Gydr</strong></a></sub>
 </p>
 
 ---
@@ -31,9 +36,9 @@ The provider's tokens never leave your server.
 ## Highlights
 
 - **Spec-complete for MCP.** Protected-resource and authorization-server
-  metadata, Client ID Metadata Documents and (deprecated, still on by
-  default) Dynamic Client Registration,
-  PKCE, resource indicators and issuer identification: everything the
+  metadata, Client ID Metadata Documents, Dynamic Client Registration
+  (deprecated, still on by default), PKCE, resource indicators and issuer
+  identification: everything the
   [MCP Authorization specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization)
   asks of a server.
 - **No token passthrough.** Clients get tokens bound to your MCP endpoint.
@@ -62,6 +67,8 @@ The provider's tokens never leave your server.
 - [Security model](#security-model)
 - [Specification compliance](#specification-compliance)
 - [Compatibility](#compatibility)
+- [Security](#security)
+- [About Gydr](#about-gydr)
 
 ## How it works
 
@@ -282,9 +289,10 @@ const auth = createMcpAuth({
 literal `true` (or `{ allow: true }`) continues; `false`, any other value, a
 rejection or a throw refuses. A refusal may name a reason,
 `{ allow: false, reason: "no_seat" }` (1–64 characters of
-`A-Z a-z 0-9 _ . : -`), which reaches your error page as `policyReason`. Every hook receives deeply frozen copies of the data it inspects
-(the client, scopes, metadata, claims and grant), so it can read validated
-state but cannot change what the server goes on to use.
+`A-Z a-z 0-9 _ . : -`), which reaches your error page as `policyReason`.
+Every hook receives deeply frozen copies of the data it inspects (the
+client, scopes, metadata, claims and grant), so it can read validated state
+but cannot change what the server goes on to use.
 
 | Hook                     | Called                                 | On refusal                                                                                            |
 | ------------------------ | -------------------------------------- | ----------------------------------------------------------------------------------------------------- |
@@ -410,10 +418,10 @@ or a delete that returns the row, never a read followed by a write.
 Expired records read as absent and may be deleted at any time, for example
 by a database TTL (`getConsentRequest` may also return an expired one).
 `deleteGrant` must make `getGrant` return nothing, and should resolve with
-the deleted record so the last stored upstream token is the one revoked. `getAuthorizationCode`
-reads a code, consumed or not, without using it up: the token endpoint
-checks the client, redirect URI, resource and PKCE verifier against it
-first.
+the deleted record so the last stored upstream token is the one revoked.
+`getAuthorizationCode` reads a code, consumed or not, without using it up:
+the token endpoint checks the client, redirect URI, resource and PKCE
+verifier against it first.
 
 Three methods are optional: `putConsentOutcome` / `getConsentOutcome`
 (answering a repeated consent submission) and `listGrantsBySubject`
@@ -439,9 +447,9 @@ evict the least recently used grant-less dynamic client first when full.
       `trustProxy` behind exactly one proxy you control). **Without
       `getClientIp` or `trustProxy`, every request shares the single key
       `"unknown"`**, so one busy client can exhaust the limit for everyone.
-      Without `rateLimit`, `POST /register` is open to flooding. A starting point: 10
-      registrations per address per hour, 30 authorization starts per
-      address per minute.
+      Without `rateLimit`, `POST /register` is open to flooding. A starting
+      point: 10 registrations per address per hour, 30 authorization starts
+      per address per minute.
 - [ ] **Alerts** from `onEvent` on `refresh_token_replayed`,
       `authorization_code_replayed`, and bursts of `flow_binding_mismatch` or
       `client_metadata_refused`.
@@ -484,7 +492,7 @@ evict the least recently used grant-less dynamic client first when full.
 | `fetchClientMetadata(url, { signal })`  | SSRF-safe fetcher                                                       | Replace how metadata documents are downloaded. Must stay SSRF-safe.                                                                                     |
 | `lifetimes`                             | see below                                                               | Token and flow lifetimes, in seconds.                                                                                                                   |
 | `limits`                                | see below                                                               | Sizes and counts.                                                                                                                                       |
-| `refreshReuseGraceSeconds`              | `10`                                                                    | Retry window for a just-used refresh token. `0` treats any reuse as replay.                                                                             |
+| `refreshReuseGraceSeconds`              | `10`                                                                    | Retry window (0–300) for a just-used refresh token. `0` treats any reuse as replay.                                                                     |
 | `consentReplaySeconds`                  | `10`                                                                    | Window (0–60) in which a repeated consent submission from the same browser gets the same redirect.                                                      |
 | `scriptHashes`                          | none                                                                    | `sha256-…` hashes of inline scripts a custom consent page may run.                                                                                      |
 | `paths`                                 | `/authorize`, `/callback`, `/consent`, `/token`, `/register`, `/revoke` | Route paths under the issuer path: one leading `/`, no `//`, `\`, dot segments or whitespace, distinct, and never a metadata path or the resource path. |
@@ -554,6 +562,20 @@ evict the least recently used grant-less dynamic client first when full.
 | `createAesGcmSealer(options)` | AES-256-GCM with a random IV per value, the grant id as authenticated data, and key ids for rotation.                                                                                 |
 | `createMemoryStore(options?)` | A correct **single-process, non-persistent** store for development and tests.                                                                                                         |
 | `escapeHtml(text)`            | The escaping the built-in pages use, for your own page renderers.                                                                                                                     |
+
+### Errors
+
+These classes reach your own code, for example from
+`getUpstreamAccessToken()`; requests to the OAuth routes are answered with
+OAuth errors or error pages instead. No error message contains a token.
+
+| Class                   | Thrown when                                                                                                                                          |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `McpAuthConfigError`    | `createMcpAuth` options are invalid, or `revokeGrantsForSubject` is called on a store without `listGrantsBySubject`.                                 |
+| `GrantInactiveError`    | `getUpstreamAccessToken()` or `renewUpstream()` runs for a grant that was revoked or has expired.                                                    |
+| `UpstreamTokenError`    | No upstream access token could be obtained for a live grant.                                                                                         |
+| `IdentityProviderError` | A call to the identity provider failed (discovery, code exchange, ID token checks, renewal). `code` is the provider's OAuth error, when it sent one. |
+| `SealerError`           | A sealed value is malformed, was altered, belongs to another owner, or uses a key id that is not configured.                                         |
 
 ### Registered metadata is enforced
 
@@ -661,13 +683,36 @@ off, and concurrent requests for one URL share a download.
 ## Security
 
 Report vulnerabilities privately, as described in [SECURITY.md](SECURITY.md).
-Releases are built and published by GitHub Actions with npm provenance;
-`npm audit signatures` verifies them.
+Please do not open a public issue for a vulnerability.
+
+Every release is built and published by GitHub Actions with
+[npm provenance](https://docs.npmjs.com/generating-provenance-statements),
+and a maintainer approves each one with a hardware security key. Verify what
+you installed with:
+
+```bash
+npm audit signatures
+```
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md)
+for the development setup and the checks a change must pass.
+
+## About Gydr
+
+`@gydr-ai/mcp-oauth` is built and maintained by [Gydr](https://gydr.ai), an
+AI chatbot platform that answers customers on websites, WhatsApp, Messenger,
+Instagram and Telegram. Businesses on Gydr manage their chatbots from Claude,
+Codex and other MCP clients, and this package grew out of the authorization
+server that makes those connections safe. See also
+[`@gydr-ai/safe-fetch`](https://github.com/gydr-ai/safe-fetch), SSRF-safe
+`fetch` for Node.js.
 
 ## License
 
-[Apache-2.0](LICENSE) © Gydr.ai
+[Apache-2.0](LICENSE) © [Gydr.ai](https://gydr.ai)
+
+<p align="center">
+  <a href="https://gydr.ai"><img alt="Gydr" src="https://img.shields.io/badge/made_by-Gydr-0f172a?style=for-the-badge" /></a>
+</p>
