@@ -28,10 +28,13 @@ echo "Dependabot alerts and security updates"
 gh api -X PUT "repos/$repo/vulnerability-alerts" --silent
 gh api -X PUT "repos/$repo/automated-security-fixes" --silent
 
-echo "Actions: read-only token, no PR approvals by Actions, SHA pinning"
+# can_approve_pull_request_reviews also governs whether a workflow may
+# OPEN a pull request, which release-please needs. An approval by Actions
+# never satisfies the ruleset: it requires a code owner's review.
+echo "Actions: read-only token, release PRs by Actions, SHA pinning"
 gh api -X PUT "repos/$repo/actions/permissions/workflow" --silent \
   -f default_workflow_permissions=read \
-  -F can_approve_pull_request_reviews=false
+  -F can_approve_pull_request_reviews=true
 gh api -X PUT "repos/$repo/actions/permissions" --silent \
   -F enabled=true -f allowed_actions=all -F sha_pinning_required=true
 gh api -X PUT "repos/$repo/actions/permissions/fork-pr-contributor-approval" \

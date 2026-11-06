@@ -101,6 +101,16 @@ workflow alone can never put a version on npm:
    `release.yml` run, and the expected file list before approving. Reject a
    stage you did not expect with `npm stage reject <stage-id>`.
 
+## If publishing fails
+
+The tag and the GitHub release exist as soon as the release pull request
+merges, so a failed publish job does not need a new version. Fix the cause
+on `main` first, then stage the same tag again: **Actions → Release → Run
+workflow**, branch `main`, tag `vX.Y.Z`. The run rebuilds that tagged commit,
+checks that its `package.json` version matches the tag, and asks for the
+same two approvals. Check with `npm view @gydr-ai/mcp-oauth versions` that the version is
+not already on npm before you start.
+
 ## Verifying a release
 
 ```bash
