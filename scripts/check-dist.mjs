@@ -20,6 +20,11 @@ const expected = {
 const mod = await import(new URL("../dist/index.js", import.meta.url).href)
 const failures = []
 
+/** Escape every regular-expression metacharacter in a symbol name. */
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
 for (const [name, type] of Object.entries(expected)) {
   if (typeof mod[name] !== type) {
     failures.push(`export ${name} is ${typeof mod[name]}, expected ${type}`)
@@ -71,7 +76,7 @@ function scanDeclarations(dir) {
     for (const name of internal) {
       if (
         new RegExp(
-          `\\bexport\\s+(?:declare\\s+)?(?:function|class|const|interface|type)\\s+${name}\\b`,
+          `\\bexport\\s+(?:declare\\s+)?(?:function|class|const|interface|type)\\s+${escapeRegExp(name)}\\b`,
         ).test(text)
       ) {
         failures.push(`${path} declares internal symbol ${name}`)

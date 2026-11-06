@@ -3,6 +3,12 @@
 # Shai-Hulud spread through freshly published versions that were found and
 # pulled within days.
 minimumReleaseAge: 10080
+# Our own packages skip the wait so a fix can ship the same day. They are
+# published only by our Release workflow over trusted publishing with
+# provenance, and trustPolicy below refuses any version that lacks it, so a
+# version published with a stolen credential is still blocked.
+minimumReleaseAgeExclude:
+  - "@gydr-ai/*"
 # Never run install scripts from dependencies.
 strictDepBuilds: true
 allowBuilds:
@@ -17,7 +23,3 @@ blockExoticSubdeps: true
 overrides:
   # GHSA-g3hv-75wg-m249 (ReDoS-style DoS), via eslint and typescript-eslint.
   minimatch: "11.0.3"
-  # TEMPORARY: @gydr-ai/safe-fetch is developed beside this package and is not
-  # published yet. Remove this override before the first release so the
-  # published ^0.1.0 range resolves from the registry.
-  "@gydr-ai/safe-fetch": "link:../safe-fetch"

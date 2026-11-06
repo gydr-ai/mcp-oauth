@@ -4,10 +4,20 @@ name: Release
 # release x.y.z" pull request up to date (version bump + CHANGELOG). Merging
 # it tags the release, and the publish job ships that exact commit to npm
 # through npm Trusted Publishing (OIDC): no npm token exists anywhere.
+#
+# If publishing fails after the tag exists, run this workflow by hand on
+# main with that tag (Actions → Release → Run workflow) to stage the same
+# tagged commit again. It cannot create a tag or a version.
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish again (for example v1.2.3)
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -18,6 +28,7 @@ concurrency:
 
 jobs:
   release-please:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -55,20 +66,45 @@ jobs:
   # be able to request the publish token.
   build:
     needs: release-please
-    if: needs.release-please.outputs.release_created == 'true'
+    # On a manual run release-please is skipped, so `always()` lets this job
+    # run; it still never runs after a failed or cancelled release-please.
+    if: >-
+      always() && !cancelled() && (
+        (github.event_name == 'push' && needs.release-please.outputs.release_created == 'true') ||
+        github.event_name == 'workflow_dispatch'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
+    env:
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.tag_name }}
     steps:
       - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: audit
 
+      # The tag must look like a release tag; it is passed through the
+      # environment, never interpolated into the script.
+      - name: Check tag
+        run: |
+          case "$TAG" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "Not a release tag: $TAG"; exit 1 ;;
+          esac
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.release-please.outputs.tag_name }}
+          ref: refs/tags/${{ env.TAG }}
           persist-credentials: false
+
+      - name: Check version matches tag
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          if [ "v$version" != "$TAG" ]; then
+            echo "package.json version $version does not match tag $TAG"
+            exit 1
+          fi
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
@@ -93,6 +129,7 @@ jobs:
   # project code, so the OIDC token is only ever seen by npm itself.
   publish:
     needs: [release-please, build]
+    if: always() && !cancelled() && needs.build.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # Protected environment: add required reviewers in Settings → Environments
@@ -130,14 +167,20 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
 
-      # Trusted Publishing needs npm 11.5.1 or later. Node 24 bundles it, so
-      # nothing is downloaded into this privileged job; fail if that changes.
+      # Staged publishing needs npm 11.15.0 or later (trusted publishing
+      # 11.5.1). Node 24 bundles it, so nothing is downloaded into this
+      # privileged job; fail if that changes.
       - name: Check bundled npm
         run: |
           node -e '
             const [major, minor, patch] = process.argv[1].split(".").map(Number)
-            const ok = major > 11 || (major === 11 && (minor > 5 || (minor === 5 && patch >= 1)))
-            if (!ok) { console.error("npm " + process.argv[1] + " is too old for trusted publishing"); process.exit(1) }
+            const ok = major > 11 || (major === 11 && minor >= 15)
+            if (!ok) { console.error("npm " + process.argv[1] + " is too old for staged publishing"); process.exit(1) }
           ' "$(npm --version)"
 
-      - run: npm publish out/*.tgz --access public
+      # Staged publishing: the trusted publisher on npm allows only
+      # `npm stage publish`, so this run can only queue the version. It goes
+      # live when a maintainer approves it on npm with 2FA (RELEASING.md).
+      # The `./` matters: without it npm reads `out/name.tgz` as a GitHub
+      # `owner/repo` shorthand and tries to clone it over git.
+      - run: npm stage publish ./out/*.tgz --access public --provenance

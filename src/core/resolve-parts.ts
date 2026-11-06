@@ -1,3 +1,4 @@
+import { trimTrailing } from "../helpers/text.js"
 import { DEFAULT_LIMITS } from "../constants/defaults.js"
 import { LOOPBACK_HOSTS } from "../constants/protocol.js"
 import { McpAuthConfigError } from "../errors/mcp-auth-config-error.js"
@@ -54,7 +55,7 @@ export function parseServerUrl(
  * @internal
  */
 export function trimPath(pathname: string): string {
-  return pathname.replace(/\/+$/, "")
+  return trimTrailing(pathname, "/")
 }
 
 /**
