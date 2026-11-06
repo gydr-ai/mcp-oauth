@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.3](https://github.com/gydr-ai/mcp-oauth/compare/v0.1.2...v0.1.3) (2026-11-06)
+
+
+### Features
+
+* sliding grant lifetime, default grant types and the grant's redirect URI ([#10](https://github.com/gydr-ai/mcp-oauth/issues/10)) ([98ed6ed](https://github.com/gydr-ai/mcp-oauth/commit/98ed6ed9f67319cfb17b3e9a9669d9a87058fa67))
+
 ## [0.1.2](https://github.com/gydr-ai/mcp-oauth/compare/v0.1.1...v0.1.2) (2026-11-06)
 
 
