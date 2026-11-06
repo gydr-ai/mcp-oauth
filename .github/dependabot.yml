@@ -13,6 +13,12 @@ updates:
         - "@gydr-ai/*"
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # typescript-eslint supports TypeScript below 6.1 only, so a major
+      # TypeScript update breaks lint. Remove once typescript-eslint supports
+      # the next major.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
     groups:
       dev-dependencies:
         dependency-type: development

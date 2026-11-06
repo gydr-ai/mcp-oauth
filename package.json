@@ -56,11 +56,11 @@
   },
   "dependencies": {
     "@gydr-ai/safe-fetch": "^0.1.1",
-    "jose": "^6.2.13"
+    "jose": "^6.2.14"
   },
   "devDependencies": {
     "@types/node": "26.6.6",
-    "@vitest/coverage-v8": "4.1.12",
+    "@vitest/coverage-v8": "5.0.5",
     "@vitest/eslint-plugin": "1.6.28",
     "esbuild": "0.28.2",
     "eslint": "10.13.0",
@@ -68,6 +68,6 @@
     "prettier": "3.9.10",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.1",
-    "vitest": "4.1.12"
+    "vitest": "5.0.5"
   }
 }
