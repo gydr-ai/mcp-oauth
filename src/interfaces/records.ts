@@ -292,9 +292,14 @@ export interface GrantRecord {
    * or `McpAuth.updateGrantData` (JSON, at most `limits.grantDataBytes`).
    */
   readonly data?: unknown
+  /** The redirect URI the approved authorization was sent to. */
+  readonly redirectUri?: string
   /** When the person approved. */
   readonly createdAt: number
-  /** Absolute end of the grant; no token outlives it. */
+  /**
+   * End of the grant; no token outlives it. With `lifetimes.grantIdle` it
+   * moves forward on each refresh, never past `createdAt + lifetimes.grant`.
+   */
   readonly expiresAt: number
 }
 
@@ -319,6 +324,8 @@ export interface GrantUpstreamUpdate {
   readonly upstreamAccessTokenExpiresAt?: number
   /** New integrator data for the grant (see `GrantRecord.data`). */
   readonly data?: unknown
+  /** New end of the grant, after a refresh under `lifetimes.grantIdle`. */
+  readonly expiresAt?: number
 }
 
 /**

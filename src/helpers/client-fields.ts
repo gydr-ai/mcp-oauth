@@ -73,21 +73,23 @@ function isSupportedGrantType(value: string): value is SupportedGrantType {
 }
 
 /**
- * Interpret registered `grant_types`. Absent means `authorization_code` alone
- * (RFC 7591 § 2). The list must contain `authorization_code`; with `strict`,
+ * Interpret registered `grant_types`. Absent means `omitted` (by default
+ * `authorization_code` alone, RFC 7591 § 2). The list must contain `authorization_code`; with `strict`,
  * any type this server cannot issue makes it invalid, otherwise such types
  * are dropped. Returns `undefined` when invalid.
  *
  * @param value - The raw `grant_types` metadata value, of unknown type; `undefined` means omitted.
  * @param strict - `true` for registration (any unknown grant type refuses), `false` for metadata documents (unknown types are dropped).
+ * @param omitted - The grant types used when `value` is absent (`defaultGrantTypes`).
  * @returns The grant types, or `undefined` when invalid.
  * @internal
  */
 export function parseGrantTypes(
   value: unknown,
   strict: boolean,
+  omitted: readonly SupportedGrantType[] = ["authorization_code"],
 ): SupportedGrantType[] | undefined {
-  if (value === undefined) return ["authorization_code"]
+  if (value === undefined) return [...omitted]
 
   if (!isStringArray(value) || !value.includes("authorization_code")) {
     return undefined

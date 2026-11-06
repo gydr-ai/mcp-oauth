@@ -8,6 +8,7 @@ import { requireOwnResource } from "./client-form.js"
 import { issueTokenPair, liveGrant } from "./grants.js"
 import { requireTokenIssue } from "./token-policy.js"
 import { hasExpired } from "../helpers/time.js"
+import { slidGrantExpiry } from "./grant-expiry.js"
 
 /**
  * Exchange a refresh token for a new access token and a rotated refresh
@@ -114,9 +115,19 @@ export async function exchangeRefreshToken(
     throw new EndpointRefusal("invalid_grant", "Access has been withdrawn")
   }
 
+  // Under `lifetimes.grantIdle` a renewal extends the grant, never past its
+  // absolute limit. Only a stored extension is used: a store that did not
+  // save it leaves the grant (and the tokens below) on the old expiry.
+  const slid = slidGrantExpiry(options, grant, now)
+  const renewed =
+    slid !== undefined &&
+    (await options.store.updateGrant(grant.grantId, { expiresAt: slid }))
+      ? { ...grant, expiresAt: slid }
+      : grant
+
   // A narrowed request narrows only this access token; the new refresh
   // token keeps the scopes it replaces (OAuth 2.1 § 4.3.1, RFC 6749 § 6).
-  const tokens = await issueTokenPair(context, grant, scopes, known.scopes)
+  const tokens = await issueTokenPair(context, renewed, scopes, known.scopes)
 
   await context.emit({
     type: "token_issued",

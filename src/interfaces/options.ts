@@ -76,6 +76,12 @@ export interface Lifetimes {
    * (90 days).
    */
   readonly grant?: number
+  /**
+   * Sliding limit on a grant: it also ends when it has not been renewed with
+   * a refresh token for this long, and each renewal extends it again, never
+   * beyond `grant`. 0 to 34,560,000; `0` disables. Default: 0.
+   */
+  readonly grantIdle?: number
   /** Authorization code lifetime, 1 to 600. Default: 60. */
   readonly authorizationCode?: number
   /** Time allowed for sign-in plus consent, 1 to 3600. Default: 900 (15 minutes). */
@@ -315,6 +321,16 @@ export interface McpAuthOptions {
   readonly scopes?: readonly string[]
   /** Scopes granted when a client asks for none. Default: all `scopes`. */
   readonly defaultScopes?: readonly string[]
+  /**
+   * Grant types a registered client or metadata document gets when it names
+   * none. RFC 7591 § 2 reads an absent `grant_types` as
+   * `["authorization_code"]`, so such a client receives no refresh token;
+   * `["authorization_code", "refresh_token"]` gives it one. Must include
+   * `authorization_code`. Default: `["authorization_code"]`.
+   */
+  readonly defaultGrantTypes?: readonly (
+    "authorization_code" | "refresh_token"
+  )[]
   /**
    * Plain-language description per scope, shown on the consent screen (and
    * escaped). Keys must be listed in `scopes`. Default: none.
@@ -658,6 +674,12 @@ export interface ResolvedOptions {
   readonly refreshTokenTtlMs: number
   /** Grant lifetime in ms. */
   readonly grantTtlMs: number
+  /** Grant idle limit in ms; `0` when grants do not slide. */
+  readonly grantIdleMs: number
+  /** Grant types a client gets when it registers none. */
+  readonly defaultGrantTypes: readonly (
+    "authorization_code" | "refresh_token"
+  )[]
   /** Authorization code lifetime in ms. */
   readonly codeTtlMs: number
   /** Sign-in plus consent time in ms. */

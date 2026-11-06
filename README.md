@@ -365,7 +365,11 @@ const auth = createMcpAuth({
   `consentReplaySeconds` (default 10, at most 60) receives the same
   redirect again, when the store implements the optional
   `putConsentOutcome` / `getConsentOutcome`; otherwise a repeat sees an
-  error page. The remembered redirect is stored encrypted.
+  error page. A repeat that arrives while the first is still being decided
+  (in `beforeGrant` or `afterGrant`) waits for its answer, within the same
+  window; the first leaves a short "being decided" mark for that, so a
+  forged repeat, which finds none, is answered at once. Everything
+  remembered is stored encrypted.
 
 **Pages**
 
@@ -423,9 +427,14 @@ the deleted record so the last stored upstream token is the one revoked.
 the token endpoint checks the client, redirect URI, resource and PKCE
 verifier against it first.
 
+`updateGrant` must save every field it is given, including `expiresAt`
+(sent on refresh under `lifetimes.grantIdle`); `putGrant` must keep the
+whole record, including the optional `redirectUri`.
+
 Three methods are optional: `putConsentOutcome` / `getConsentOutcome`
-(answering a repeated consent submission) and `listGrantsBySubject`
-(`revokeGrantsForSubject`).
+(answering a repeated consent submission; one submission writes twice, the
+"being decided" mark and then the answer, so a later write replaces an
+earlier one) and `listGrantsBySubject` (`revokeGrantsForSubject`).
 
 Good fits: PostgreSQL or MySQL (`UPDATE … WHERE used_at IS NULL`,
 `DELETE … RETURNING`), Redis (`GETDEL`, Lua), MongoDB (`findOneAndUpdate`),
@@ -492,6 +501,7 @@ evict the least recently used grant-less dynamic client first when full.
 | `fetchClientMetadata(url, { signal })`  | SSRF-safe fetcher                                                       | Replace how metadata documents are downloaded. Must stay SSRF-safe.                                                                                     |
 | `lifetimes`                             | see below                                                               | Token and flow lifetimes, in seconds.                                                                                                                   |
 | `limits`                                | see below                                                               | Sizes and counts.                                                                                                                                       |
+| `defaultGrantTypes`                     | `["authorization_code"]`                                                | Grant types for a client that registers none. Must include `authorization_code`.                                                                        |
 | `refreshReuseGraceSeconds`              | `10`                                                                    | Retry window (0–300) for a just-used refresh token. `0` treats any reuse as replay.                                                                     |
 | `consentReplaySeconds`                  | `10`                                                                    | Window (0–60) in which a repeated consent submission from the same browser gets the same redirect.                                                      |
 | `scriptHashes`                          | none                                                                    | `sha256-…` hashes of inline scripts a custom consent page may run.                                                                                      |
@@ -508,15 +518,16 @@ evict the least recently used grant-less dynamic client first when full.
 <details>
 <summary><strong><code>lifetimes</code></strong> (seconds)</summary>
 
-| Key                     | Default                                                                      | Allowed      |
-| ----------------------- | ---------------------------------------------------------------------------- | ------------ |
-| `accessToken`           | 1,800 (30 minutes)                                                           | 1–86,400     |
-| `refreshToken`          | 1,209,600 (14 days, renewed on every rotation)                               | 1–34,560,000 |
-| `grant`                 | 7,776,000 (90 days, absolute; then consent again)                            | 1–34,560,000 |
-| `authorizationCode`     | 60                                                                           | 1–600        |
-| `pendingAuthorization`  | 900 (sign-in plus consent)                                                   | 1–3,600      |
-| `clientMetadataCache`   | 1,800 (`0` disables the cache); a document's own `Cache-Control` shortens it | 0–86,400     |
-| `clientMetadataFailure` | 60 (back-off for a failed metadata URL; `0` disables)                        | 0–3,600      |
+| Key                     | Default                                                                                                             | Allowed      |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------ |
+| `accessToken`           | 1,800 (30 minutes)                                                                                                  | 1–86,400     |
+| `refreshToken`          | 1,209,600 (14 days, renewed on every rotation)                                                                      | 1–34,560,000 |
+| `grant`                 | 7,776,000 (90 days, absolute; then consent again)                                                                   | 1–34,560,000 |
+| `grantIdle`             | 0 (off). When set, a grant also ends after this long without a refresh; each refresh extends it, never past `grant` | 0–34,560,000 |
+| `authorizationCode`     | 60                                                                                                                  | 1–600        |
+| `pendingAuthorization`  | 900 (sign-in plus consent)                                                                                          | 1–3,600      |
+| `clientMetadataCache`   | 1,800 (`0` disables the cache); a document's own `Cache-Control` shortens it                                        | 0–86,400     |
+| `clientMetadataFailure` | 60 (back-off for a failed metadata URL; `0` disables)                                                               | 0–3,600      |
 
 </details>
 
@@ -582,7 +593,9 @@ OAuth errors or error pages instead. No error message contains a token.
 - **`grant_types`**: a client that omits it gets `authorization_code` only
   (RFC 7591 § 2) and **no refresh token**. Clients that want refresh tokens
   register `["authorization_code", "refresh_token"]`. Metadata documents
-  are treated the same way.
+  are treated the same way. Set `defaultGrantTypes:
+["authorization_code", "refresh_token"]` to give such clients refresh
+  tokens anyway.
 - **`scope`**: a client that registers a scope can only request scopes
   within it. Unknown scopes are refused at registration and ignored in a
   metadata document.

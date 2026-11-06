@@ -175,8 +175,10 @@ export interface OAuthStore {
   /** Read a grant. */
   getGrant(grantId: string): Promise<GrantRecord | undefined>
   /**
-   * Update the upstream-token fields of an existing grant. Resolves `false`,
-   * writing nothing, when the grant no longer exists.
+   * Update fields of an existing grant: the upstream tokens, `data`, or
+   * `expiresAt` (a refresh under `lifetimes.grantIdle`). Save every field
+   * given. Resolves `false`, writing nothing, when the grant no longer
+   * exists.
    */
   updateGrant(grantId: string, update: GrantUpstreamUpdate): Promise<boolean>
   /**
