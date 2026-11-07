@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.4](https://github.com/gydr-ai/mcp-oauth/compare/v0.1.3...v0.1.4) (2026-11-07)
+
+
+### Bug Fixes
+
+* replay the issued pair for a refresh retry, and send HSTS on every response ([#12](https://github.com/gydr-ai/mcp-oauth/issues/12)) ([c57b7ee](https://github.com/gydr-ai/mcp-oauth/commit/c57b7ee9c6d9cb7597fff9cbbf59ad458f0fd47f))
+
 ## [0.1.3](https://github.com/gydr-ai/mcp-oauth/compare/v0.1.2...v0.1.3) (2026-11-06)
 
 
