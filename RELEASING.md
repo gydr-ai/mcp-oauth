@@ -53,6 +53,8 @@ is created at any point.
    This publishes `0.0.0-placeholder` (a README and a `package.json`, no
    code) under the `placeholder` dist-tag. It refuses to run if the package
    already exists.
+   Run `npm logout` as soon as it finishes, so no session token stays in
+   `~/.npmrc`.
 
 2. **Trusted publisher**: on npmjs.com open the package → Settings →
    Trusted publishing → GitHub Actions, and enter:
@@ -89,17 +91,19 @@ workflow alone can never put a version on npm:
 
 1. **GitHub**: approve the `npm` environment deployment when the Release
    workflow asks. CI then _stages_ the version with provenance.
-2. **npm**: approve the staged version with your 2FA (npm 11.15.0 or later):
+2. **npm**: approve the staged version on **npmjs.com**, not from a
+   terminal: sign in → **Staged Packages** tab → open `@gydr-ai/mcp-oauth` → check the
+   version and the provenance link to the `release.yml` run → **Approve**,
+   then confirm with your security key. Reject a stage you did not expect.
 
-   ```bash
-   npm stage list @gydr-ai/mcp-oauth
-   npm stage view <stage-id>
-   npm stage approve <stage-id>
-   ```
-
-   Check that `npm stage view` shows the version, the provenance link to the
-   `release.yml` run, and the expected file list before approving. Reject a
-   stage you did not expect with `npm stage reject <stage-id>`.
+   Approving in the browser leaves no credential on your machine. Never sign
+   in to the npm CLI to approve, and never create an npm access token: the
+   packages are set to "Require two-factor authentication and disallow
+   tokens", so a token could not publish anyway, and one left in `~/.npmrc`
+   is a credential waiting to leak. If you ever must use the CLI (for
+   example `npm stage view` or `npm stage download` to inspect a stage), run
+   `npm login --auth-type=web` just before, and `npm logout` straight after
+   so the session token is ended on the server and removed from `~/.npmrc`.
 
 ## If publishing fails
 
