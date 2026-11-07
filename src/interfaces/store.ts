@@ -48,8 +48,9 @@ import type {
  * an idle period, and when a size cap is reached evict the least recently
  * used grant-less dynamic client first; never evict `static` clients.
  *
- * Only hashes of tokens and codes reach the store. Upstream tokens arrive
- * already encrypted by the `SecretSealer`.
+ * Only hashes of tokens and codes reach the store. Upstream tokens, and the
+ * pair a refresh token was exchanged for (`putRefreshTokenReplacement`),
+ * arrive already encrypted by the `SecretSealer`.
  *
  * @example
  * ```ts
@@ -212,6 +213,24 @@ export interface OAuthStore {
     tokenHash: string,
     now: number,
   ): Promise<UsedRefreshToken | undefined>
+
+  /**
+   * Optional, recommended: save `sealedReplacement` on the (already used)
+   * refresh token record `tokenHash`, keeping every other field, `usedAt`
+   * included. `getRefreshToken` and `useRefreshToken` must return it from
+   * then on. A later write replaces an earlier one; nothing happens when the
+   * record is gone.
+   *
+   * With it, a refresh token presented again inside
+   * `refreshReuseGraceSeconds` receives exactly the pair its first exchange
+   * issued, so a copied refresh token can never start a second token chain.
+   * Without it, such a retry receives a new access token only, with no
+   * refresh token.
+   */
+  putRefreshTokenReplacement?(
+    tokenHash: string,
+    sealedReplacement: string,
+  ): Promise<void>
 
   /**
    * Optional: remember the answer to a consent submission for a few

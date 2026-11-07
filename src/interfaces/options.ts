@@ -361,8 +361,10 @@ export interface McpAuthOptions {
   readonly lifetimes?: Lifetimes
   /**
    * Seconds after a refresh token is used during which presenting it again
-   * returns another token pair (a lost response, a retried request) instead
-   * of ending the grant; `0` turns the window off. Default: 10.
+   * (a lost response, a retried request) returns the pair the first use
+   * issued instead of ending the grant; with a store that lacks
+   * `putRefreshTokenReplacement`, a new access token only. Never a second
+   * refresh token chain. `0` turns the window off. Default: 10.
    */
   readonly refreshReuseGraceSeconds?: number
   /** Accept Client ID Metadata Document client ids. Default: `true`. */
@@ -626,6 +628,14 @@ export interface McpAuthOptions {
    */
   readonly allowInsecureLocalhost?: boolean
   /**
+   * Send `Strict-Transport-Security: max-age=63072000; includeSubDomains`
+   * on every response this package builds (endpoints, pages, redirects and
+   * `authenticate` / `unauthorized` refusals). Set `false` only when a proxy
+   * in front already sets the header, or when the issuer's subdomains must
+   * stay reachable over plain HTTP. Default: `true`.
+   */
+  readonly strictTransportSecurity?: boolean
+  /**
    * Clock in milliseconds since the epoch, for tests. A non-finite value
    * makes the request fail instead of disabling expiry checks.
    * Default: `Date.now`.
@@ -697,6 +707,8 @@ export interface ResolvedOptions {
   readonly clientIdMetadataDocuments: boolean
   /** Whether registration is served. */
   readonly dynamicClientRegistration: boolean
+  /** Whether responses carry `Strict-Transport-Security`. */
+  readonly strictTransportSecurity: boolean
   /** Endpoint paths. */
   readonly paths: Required<RoutePaths>
   /** Size and count limits. */

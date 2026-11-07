@@ -112,6 +112,34 @@ describe("createMemoryStore atomicity", () => {
     )
     expect(await store.useRefreshToken("missing", 0)).toBeUndefined()
   })
+
+  it("putRefreshTokenReplacement keeps usedAt and is returned by later reads", async () => {
+    const clock = new Clock()
+    const store = createMemoryStore({ now: clock.now })
+
+    await store.putRefreshToken({
+      tokenHash: "t",
+      grantId: "g",
+      clientId: "c",
+      scopes: [],
+      resource: "r",
+      expiresAt: clock.value + 1000,
+    })
+    await store.useRefreshToken("t", clock.value)
+    await store.putRefreshTokenReplacement?.("t", "sealed-pair")
+
+    expect(await store.getRefreshToken("t")).toMatchObject({
+      usedAt: clock.value,
+      sealedReplacement: "sealed-pair",
+    })
+    expect(await store.useRefreshToken("t", clock.value + 1)).toMatchObject({
+      previousUsedAt: clock.value,
+      record: { sealedReplacement: "sealed-pair" },
+    })
+
+    await store.putRefreshTokenReplacement?.("missing", "sealed-pair")
+    expect(await store.getRefreshToken("missing")).toBeUndefined()
+  })
 })
 
 describe("createMemoryStore lifecycle", () => {
