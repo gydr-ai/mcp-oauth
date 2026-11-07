@@ -1,0 +1,23 @@
+sequenceDiagram
+    autonumber
+    participant C as MCP client
+    participant B as Browser
+    participant S as Your server + mcp-oauth
+    participant I as Identity provider
+
+    C->>S: MCP request without a token
+    S-->>C: 401, WWW-Authenticate points at resource metadata
+    C->>S: discover metadata, register (or use a metadata-document client_id)
+    C->>B: open /authorize (PKCE, resource, state)
+    B->>S: GET /authorize
+    S-->>B: redirect to the IdP, plus a browser-binding cookie
+    B->>I: sign in
+    I-->>B: back to /callback
+    S->>I: exchange the code, verify the ID token
+    S-->>B: consent screen
+    B->>S: approve
+    S-->>B: redirect to the client with a one-time code
+    C->>S: POST /token (code + PKCE verifier)
+    S-->>C: opaque access and refresh tokens for your MCP endpoint
+    C->>S: MCP request with Authorization: Bearer
+    S->>I: renew the upstream token when your code needs it (server side only)
