@@ -72,31 +72,12 @@ The provider's tokens never leave your server.
 
 ## How it works
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant C as MCP client
-    participant B as Browser
-    participant S as Your server + mcp-oauth
-    participant I as Identity provider
-
-    C->>S: MCP request without a token
-    S-->>C: 401, WWW-Authenticate points at resource metadata
-    C->>S: discover metadata, register (or use a metadata-document client_id)
-    C->>B: open /authorize (PKCE, resource, state)
-    B->>S: GET /authorize
-    S-->>B: redirect to the IdP, plus a browser-binding cookie
-    B->>I: sign in
-    I-->>B: back to /callback
-    S->>I: exchange the code, verify the ID token
-    S-->>B: consent screen
-    B->>S: approve
-    S-->>B: redirect to the client with a one-time code
-    C->>S: POST /token (code + PKCE verifier)
-    S-->>C: opaque access and refresh tokens for your MCP endpoint
-    C->>S: MCP request with Authorization: Bearer
-    S->>I: renew the upstream token when your code needs it (server side only)
-```
+<!-- Source: .github/assets/how-it-works.mmd. npm does not render Mermaid, so the
+     chart ships as a PNG. Regenerate with @mermaid-js/mermaid-cli (theme neutral,
+     white background, scale 2) after editing the source. -->
+<p align="center">
+  <img alt="Sequence: the MCP client gets a 401 pointing at resource metadata, registers, opens /authorize in the browser; the server redirects to the identity provider, exchanges the code, shows consent, redirects back with a one-time code; the client exchanges it at /token for opaque tokens and calls the MCP endpoint with Authorization: Bearer; the server renews the upstream token itself." src="https://raw.githubusercontent.com/gydr-ai/mcp-oauth/main/.github/assets/how-it-works.png" width="100%" />
+</p>
 
 ## Install
 
