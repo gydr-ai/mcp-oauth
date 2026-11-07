@@ -219,6 +219,7 @@ export function resolveOptions(
     refreshReuseGraceMs: graceSeconds * 1000,
     clientIdMetadataDocuments: options.clientIdMetadataDocuments ?? true,
     dynamicClientRegistration: options.dynamicClientRegistration ?? true,
+    strictTransportSecurity: options.strictTransportSecurity !== false,
     paths,
     callbackUrl: `${issuerUrl.origin}${paths.callback}`,
     trustProxy: options.trustProxy ?? false,
