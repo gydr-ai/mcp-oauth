@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.7](https://github.com/gydr-ai/mcp-oauth/compare/v0.1.6...v0.1.7) (2026-11-13)
+
+
+### Bug Fixes
+
+* build releases with pnpm 11.28.9 and keep the publish job download-free ([#24](https://github.com/gydr-ai/mcp-oauth/issues/24)) ([e3a42a6](https://github.com/gydr-ai/mcp-oauth/commit/e3a42a6a6b253337a0c9a44c0991fd0fe0a56812))
+
 ## [0.1.6](https://github.com/gydr-ai/mcp-oauth/compare/v0.1.5...v0.1.6) (2026-11-13)
 
 
