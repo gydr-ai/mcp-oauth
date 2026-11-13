@@ -168,9 +168,10 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
-          # Newest patch, not the runner's cached one: security releases land
-          # days before runner images update.
-          check-latest: true
+          # No check-latest here: it would download Node into this privileged
+          # job, and the egress policy above (rightly) blocks the download
+          # host. This job only runs the bundled npm against the registry and
+          # Sigstore; the build and test jobs run the newest patch.
           registry-url: https://registry.npmjs.org
 
       # Staged publishing needs npm 11.15.0 or later (trusted publishing
