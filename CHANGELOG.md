@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.6](https://github.com/gydr-ai/mcp-oauth/compare/v0.1.5...v0.1.6) (2026-11-13)
+
+
+### Bug Fixes
+
+* require a Node.js release with the November 2026 security fixes ([#21](https://github.com/gydr-ai/mcp-oauth/issues/21)) ([09a674b](https://github.com/gydr-ai/mcp-oauth/commit/09a674b7df64d255b39d4d6651c649f9a92012a2))
+
 ## [0.1.5](https://github.com/gydr-ai/mcp-oauth/compare/v0.1.4...v0.1.5) (2026-11-07)
 
 
