@@ -1,6 +1,6 @@
 {
   "name": "@gydr-ai/mcp-oauth",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "OAuth 2.1 authorization server and resource-server guard for remote MCP servers, in front of any OIDC identity provider. No token passthrough, consent on every authorization, DCR and Client ID Metadata Documents.",
   "keywords": [
     "mcp",
@@ -39,7 +39,7 @@
   "engines": {
     "node": "^22.23.5 || ^24.22.3 || >=26.13.1"
   },
-  "packageManager": "pnpm@11.28.9+sha512.35421cea2720eca3f5ad722b67e8ef18f4d3cd4745ed2fcfeb0dc288d4e9437fad3870d91ee6e83f268f0f6f7e0f62723317b19617bb45ee4333172ef51159f8",
+  "packageManager": "pnpm@11.1.2",
   "publishConfig": {
     "access": "public",
     "provenance": true
