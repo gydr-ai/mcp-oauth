@@ -36,6 +36,9 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node }}
+          # Newest patch, not the runner's cached one: security releases land
+          # days before runner images update.
+          check-latest: true
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
@@ -63,6 +66,9 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
+          # Newest patch, not the runner's cached one: security releases land
+          # days before runner images update.
+          check-latest: true
 
       - run: pnpm audit --audit-level low
 

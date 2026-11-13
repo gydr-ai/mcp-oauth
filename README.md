@@ -12,7 +12,7 @@
   <img alt="MCP 2026-07-28" src="https://img.shields.io/badge/MCP-2026--07--28-6f42c1" />
   <img alt="OAuth 2.1 draft-17" src="https://img.shields.io/badge/OAuth_2.1-draft--17-0969da" />
   <img alt="CIMD draft-03" src="https://img.shields.io/badge/CIMD-draft--03-0969da" />
-  <img alt="Node.js 22.12+" src="https://img.shields.io/node/v/@gydr-ai/mcp-oauth" />
+  <img alt="Node.js version" src="https://img.shields.io/node/v/@gydr-ai/mcp-oauth" />
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue" /></a>
 </p>
 
@@ -85,7 +85,8 @@ The provider's tokens never leave your server.
 npm install @gydr-ai/mcp-oauth
 ```
 
-Node.js 22.12 or later. ES modules only. Runtime dependencies:
+Node.js 22.23.5+, 24.22.3+ or 26.13.1+ (the November 2026 Node.js security
+releases). ES modules only. Runtime dependencies:
 [`jose`](https://github.com/panva/jose) and
 [`@gydr-ai/safe-fetch`](https://github.com/gydr-ai/safe-fetch).
 
@@ -697,7 +698,7 @@ off, and concurrent requests for one URL share a download.
 
 | Area               | Supported                                                                                 |
 | ------------------ | ----------------------------------------------------------------------------------------- |
-| Runtime            | Node.js 26, 24 LTS and 22 LTS (22.12 or later), tested in CI                              |
+| Runtime            | Node.js 26.13.1+, 24.22.3+ and 22.23.5+ (LTS lines), newest patches tested in CI          |
 | Frameworks         | Anything that passes a Web `Request` and returns a `Response`                             |
 | Identity providers | Any OpenID Connect provider with discovery; anything else via a custom `IdentityProvider` |
 | Stores             | Any database with an atomic conditional write                                             |

@@ -11,7 +11,8 @@ are reviewed carefully and the bar for new options is high.
 
 ## Development
 
-Requirements: Node.js 22.12 or later and pnpm 11 (`corepack enable`).
+Requirements: Node.js 22.23.5+, 24.22.3+ or 26.13.1+ and pnpm 11
+(`corepack enable`).
 
 ```bash
 pnpm install
