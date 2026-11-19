@@ -13,7 +13,7 @@ importers:
     dependencies:
       '@gydr-ai/safe-fetch':
         specifier: ^0.1.1
-        version: 0.1.3
+        version: 0.1.5
       jose:
         specifier: ^6.2.14
         version: 6.2.17
@@ -285,9 +285,9 @@ packages:
     resolution: {integrity: sha512-IkO+/KEUvwbVpiURZg+P7zF74z5Jxe0UgJxVni+RtoHQ6IZieXaO02kmadomap/q+l6bc/jdPGGqTjhuZnuz1Q==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
-  '@gydr-ai/safe-fetch@0.1.3':
-    resolution: {integrity: sha512-UGX0/iygmdZS5FEzpmcnL+8P+Q7KobimwnAdykzuzCrpFA6PBCcNKDcoopk0wcIAmqQVHX2kfRzUT3Op1o4+Bg==}
-    engines: {node: '>=22.12'}
+  '@gydr-ai/safe-fetch@0.1.5':
+    resolution: {integrity: sha512-oFRtJWeNXYfQMZdjSDmpqKWGg00ZY0wnblCTC+HDVRNPhrEehdZkh3Dirght80IEdVPMMetYCOz5Tw79gCF4yg==}
+    engines: {node: ^22.23.5 || ^24.22.3 || >=26.13.1}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -1356,7 +1356,7 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@gydr-ai/safe-fetch@0.1.3': {}
+  '@gydr-ai/safe-fetch@0.1.5': {}
 
   '@humanfs/core@0.19.2':
     dependencies:
